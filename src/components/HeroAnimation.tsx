@@ -1,7 +1,7 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Points, PointMaterial } from '@react-three/drei'
+import { Points, PointMaterial, Line } from '@react-three/drei'
 import * as THREE from 'three'
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 
 // 背景のパーティクル
 const BackgroundParticles = () => {
@@ -36,51 +36,37 @@ const BackgroundParticles = () => {
 
 // 心電図の波形
 const EKGWave = () => {
-  const lineRef = useRef<THREE.Line>(null!)
-  const points = useMemo(() => {
+  const [points, setPoints] = useState(() => {
     const p = []
     for (let i = 0; i <= 1000; i++) {
       p.push(new THREE.Vector3(i / 100 - 5, 0, 0))
     }
     return p
-  }, [])
+  })
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime() * 2;
-    if (lineRef.current) {
-      const positions = lineRef.current.geometry.attributes.position.array as Float32Array;
-      for (let i = 0; i < positions.length / 3; i++) {
-        const x = (i / 100) - 5;
-        const wavePos = (x + t) % 5;
+    const newPoints = points.map((p, i) => {
+      const x = (i / 100) - 5;
+      const wavePos = (x + t) % 5;
 
-        let y = 0;
-        // P wave
-        if (wavePos > 0.5 && wavePos < 0.8) y = Math.sin((wavePos - 0.5) * Math.PI / 0.3) * 0.2;
-        // QRS complex
-        if (wavePos > 1.0 && wavePos < 1.1) y = (wavePos - 1.0) * -5;
-        if (wavePos >= 1.1 && wavePos < 1.2) y = ((wavePos - 1.1) * 15) - 0.5;
-        if (wavePos >= 1.2 && wavePos < 1.3) y = (1 - (wavePos - 1.2) * 10) * 1;
-        // T wave
-        if (wavePos > 1.8 && wavePos < 2.3) y = Math.sin((wavePos - 1.8) * Math.PI / 0.5) * 0.4;
+      let y = 0;
+      // P wave
+      if (wavePos > 0.5 && wavePos < 0.8) y = Math.sin((wavePos - 0.5) * Math.PI / 0.3) * 0.2;
+      // QRS complex
+      if (wavePos > 1.0 && wavePos < 1.1) y = (wavePos - 1.0) * -5;
+      if (wavePos >= 1.1 && wavePos < 1.2) y = ((wavePos - 1.1) * 15) - 0.5;
+      if (wavePos >= 1.2 && wavePos < 1.3) y = (1 - (wavePos - 1.2) * 10) * 1;
+      // T wave
+      if (wavePos > 1.8 && wavePos < 2.3) y = Math.sin((wavePos - 1.8) * Math.PI / 0.5) * 0.4;
 
-        positions[i * 3 + 1] = y;
-      }
-      lineRef.current.geometry.attributes.position.needsUpdate = true;
-    }
+      return new THREE.Vector3(x, y, p.z);
+    });
+    setPoints(newPoints);
   });
 
   return (
-    <line ref={lineRef}>
-      <bufferGeometry attach="geometry">
-        <bufferAttribute
-          attach="attributes-position"
-          count={points.length}
-          array={new Float32Array(points.flatMap(p => p.toArray()))}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      <lineBasicMaterial attach="material" color="#00ff00" linewidth={2} />
-    </line>
+    <Line points={points} color="#00ff00" lineWidth={2} />
   )
 }
 
